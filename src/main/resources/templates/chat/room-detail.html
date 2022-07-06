@@ -1,60 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
+
 <head>
     <meta charset="UTF-8">
-    <title>{{room.name}}</title>
+    <title>[[${room.name}]]</title>
     <script src="/webjars/jquery/jquery.min.js"></script>
     <script src="/webjars/sockjs-client/sockjs.min.js"></script>
     <script src="/webjars/stomp-websocket/stomp.min.js"></script>
 </head>
-<body>
-<h1>{{room.name}}({{room.roomId}})</h1>
-<div class="content" data-room-id="{{room.roomId}}" data-member="{{member}}">
-    <ul class="chat_box">
-    </ul>
-    <input name="message">
-    <button class="send">보내기</button>
+
+<div class="container">
+    <div class="col-6">
+        <h1>[[${room.name}]]</h1>
+    </div>
+    <div>
+        <div id="msgArea" class="col"></div>
+        <div class="col-6">
+            <div class="input-group mb-3">
+                <input type="text" id="msg" class="form-control">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" type="button" id="button-send">전송</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6"></div>
 </div>
-<script>
-    $(function () {
-        var chatBox = $('.chat_box');
-        var messageInput = $('input[name="message"]');
-        var sendBtn = $('.send');
-        var roomId = $('.content').data('room-id');
-        var member = $('.content').data('member');
-        var reconnect = 0;
 
-        var sock = new SockJS("/stomp-chat");
-        var client = Stomp.over(sock);
-        client.debug = function (e) {
-        };
+<script th:inline="javascript">
+            $(document).ready(function(){
 
-        function connect() {
-            client.connect({}, function (frame) {
-                client.subscribe('/subscribe/chat/room/' + roomId, function (chat) {
-                    var content = JSON.parse(chat.body);
-                    chatBox.append('<li>' + content.message + '(' + content.writer + ')</li>')
+                var roomId = [[${room.roomId}]];
+                var roomName = [[${room.name}]];
+                var username = [[${member}]];
+                var sendBtn = $("#button-send");
+
+                console.log(roomName + ", " + roomId + ", " + username);
+
+                var sockJs = new SockJS("/stomp-chat");
+                //1. SockJS를 내부에 들고있는 stomp를 내어줌
+                var client = Stomp.over(sockJs);
+
+                //2. connection이 맺어지면 실행
+                client.connect({}, function (){
+                   console.log("STOMP Connection")
+
+                   //4. subscribe(path, callback)으로 메세지를 받을 수 있음
+                   client.subscribe("/subscribe/chat/room/" + roomId, function (chat) {
+                       var content = JSON.parse(chat.body);
+
+                       var sender = content.sender;
+                       var str = '';
+
+                       if(sender === username){
+                           str = "<div class='col-6'>";
+                           str += "<div class='alert alert-secondary'>";
+                           str += "<b>" + sender + " : " + content.message + "</b>";
+                           str += "</div></div>";
+                       }
+                       else{
+                           str = "<div class='col-6'>";
+                           str += "<div class='alert alert-warning'>";
+                           str += "<b>" + sender + " : " + content.message + "</b>";
+                           str += "</div></div>";
+                       }
+
+                       $("#msgArea").append(str);
+                   });
+
+                   //3. send(path, header, message)로 메세지를 보낼 수 있음
+                   // 입장 메시지
+                   client.send('/publish/chat/join', {}, JSON.stringify({chatRoomId: roomId, sender: username}))
                 });
-                client.send('/publish/chat/join', {}, JSON.stringify({chatRoomId: roomId, type: 'JOIN', writer: member}));
-            }, function(error){
-                if(reconnect++ <= 5) {
-                    setTimeout(function() {
-                        sock = new SockJS("http://localhost:8080/stomp-chat");
-                        ws = Stomp.over(sock);
-                        connect();
-                    },10*1000);
-                }
+
+                //$("#button-send").on("click", function(e){
+
+                sendBtn.click(function () {
+                    var msg = document.getElementById("msg");
+
+                    console.log(username + ":" + msg.value);
+                    client.send('/publish/chat/message', {}, JSON.stringify({chatRoomId: roomId, message: msg.value, sender: username}));
+                    msg.value = '';
+                });
             });
-        }
+        </script>
 
-        connect();
-
-        sendBtn.click(function () {
-            var message = messageInput.val();
-            client.send('/publish/chat/message', {}, JSON.stringify({chatRoomId: roomId, type: 'CHAT', message: message, writer: member}));
-            messageInput.val('');
-        });
-    });
-</script>
-</body>
 </html>

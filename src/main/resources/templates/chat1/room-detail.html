@@ -1,8 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-
-<th:block th:replace="~{/layout/basic :: setContent(~{this :: content})}">
-    <th:block th:fragment="content">
+<html xmlns:th="http://www.thymeleaf.org">
 
         <div class="container">
             <div class="col-6">
@@ -30,35 +27,36 @@
 
                 var roomId = [[${room.roomId}]];
                 var roomName = [[${room.name}]];
-                var username = [[${#authentication.principal.username}]];
+                var username = [[${member}]];
+                var sendBtn = $("#button-send");
 
                 console.log(roomName + ", " + roomId + ", " + username);
 
                 var sockJs = new SockJS("/stomp/chat");
                 //1. SockJS를 내부에 들고있는 stomp를 내어줌
-                var stomp = Stomp.over(sockJs);
+                var client = Stomp.over(sockJs);
 
                 //2. connection이 맺어지면 실행
-                stomp.connect({}, function (){
+                client.connect({}, function (){
                    console.log("STOMP Connection")
 
                    //4. subscribe(path, callback)으로 메세지를 받을 수 있음
-                   stomp.subscribe("/sub/chat/room/" + roomId, function (chat) {
+                   client.subscribe("/subscribe/chat/room/" + roomId, function (chat) {
                        var content = JSON.parse(chat.body);
 
-                       var writer = content.writer;
+                       var sender = content.sender;
                        var str = '';
 
-                       if(writer === username){
+                       if(sender === username){
                            str = "<div class='col-6'>";
                            str += "<div class='alert alert-secondary'>";
-                           str += "<b>" + writer + " : " + content.message + "</b>";
+                           str += "<b>" + sender + " : " + content.message + "</b>";
                            str += "</div></div>";
                        }
                        else{
                            str = "<div class='col-6'>";
                            str += "<div class='alert alert-warning'>";
-                           str += "<b>" + writer + " : " + content.message + "</b>";
+                           str += "<b>" + sender + " : " + content.message + "</b>";
                            str += "</div></div>";
                        }
 
@@ -66,19 +64,20 @@
                    });
 
                    //3. send(path, header, message)로 메세지를 보낼 수 있음
-                   stomp.send('/pub/chat/enter', {}, JSON.stringify({roomId: roomId, writer: username}))
+                   // 입장 메시지
+                   client.send('/publish/chat/join', {}, JSON.stringify({chatRoomId: roomId, sender: username}))
                 });
 
-                $("#button-send").on("click", function(e){
+                //$("#button-send").on("click", function(e){
+
+                sendBtn.click(function () {
                     var msg = document.getElementById("msg");
 
                     console.log(username + ":" + msg.value);
-                    stomp.send('/pub/chat/message', {}, JSON.stringify({roomId: roomId, message: msg.value, writer: username}));
+                    client.send('/publish/chat/message', {}, JSON.stringify({chatRoomId: roomId, message: msg.value, sender: username}));
                     msg.value = '';
                 });
             });
         </script>
-    </th:block>
-</th:block>
 
 </html>

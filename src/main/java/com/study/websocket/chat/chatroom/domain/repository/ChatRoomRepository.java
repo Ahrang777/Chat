@@ -1,7 +1,6 @@
 package com.study.websocket.chat.chatroom.domain.repository;
 
 import com.study.websocket.chat.chatroom.domain.entity.ChatRoom;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import javax.annotation.PostConstruct;
@@ -12,6 +11,7 @@ public class ChatRoomRepository {
 
     private Map<String, ChatRoom> chatRoomMap;
 
+    // 테스트용 채팅방
     @PostConstruct
     private void init() {
         chatRoomMap = new LinkedHashMap<>();
@@ -21,7 +21,7 @@ public class ChatRoomRepository {
     }
 
     // 현재 roomId 는 room name
-    public ChatRoom getChatRoom(String roomId) {
+    public ChatRoom findChatRoomByRoomId(String roomId) {
         return chatRoomMap.get(roomId);
     }
 

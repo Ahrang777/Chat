@@ -1,18 +1,15 @@
 package com.study.websocket.chat.chatroom.domain.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class ChatMessage {
 
     private String chatRoomId;
-    private String writer;
+    private String sender;
     private String message;
-    private MessageType type;
 }
